@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CZAR TERMINAL — Command. Capital. Conquer.</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --c:#00d4ff;--c2:rgba(0,212,255,0.12);--c3:rgba(0,212,255,0.35);
+  --g:#00ff88;--g2:rgba(0,255,136,0.12);
+  --a:#ffaa00;--r:#ff3366;
+  --bg:#000709;--bg2:#020e18;--sf:rgba(0,18,35,0.88);
+  --bd:rgba(0,212,255,0.12);--bd2:rgba(0,212,255,0.35);
+  --tx:#b8d0e0;--td:rgba(80,130,160,0.6);
+  --ft:'Share Tech Mono',monospace;--fd:'Orbitron',monospace;--fb:'Inter',sans-serif;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:var(--fb);}
+
+/* SCANLINES */
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(0,0,0,0.12) 3px,rgba(0,0,0,0.12) 4px);pointer-events:none;z-index:9000;opacity:.25;}
+
+/* BOOT SCREEN */
+#boot{position:fixed;inset:0;background:#000709;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;transition:opacity 0.8s;}
+#boot.hide{opacity:0;pointer-events:none;}
+.boot-logo{font-family:var(--fd);font-size:72px;font-weight:900;letter-spacing:20px;color:var(--c);text-shadow:0 0 40px var(--c),0 0 80px rgba(0,212,255,0.4);}
+.boot-line{font-family:var(--ft);font-size:13px;letter-spacing:3px;color:var(--td);}
+.boot-bar-wrap{width:360px;height:2px;background:rgba(0,212,255,0.1);border-radius:2px;overflow:hidden;}
+.boot-bar{height:100%;width:0;background:linear-gradient(90deg,var(--c),var(--g));border-radius:2px;transition:width 2.5s cubic-bezier(.4,0,.2,1);}
+
+/* LAYOUT */
+.terminal{display:grid;grid-template-rows:52px 30px 1fr 108px;height:100vh;overflow:hidden;}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:rgba(0,10,20,.98);border-bottom:1px solid var(--bd2);position:relative;z-index:10;}
+header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--c),transparent);opacity:.5;}
+.logo-wrap{display:flex;flex-direction:column;}
+.czar-logo{font-family:var(--fd);font-size:20px;font-weight:900;letter-spacing:8px;color:var(--c);text-shadow:0 0 16px var(--c),0 0 32px rgba(0,212,255,0.3);}
+.czar-sub{font-family:var(--fd);font-size:6.5px;letter-spacing:4px;color:var(--td);margin-top:1px;}
+.hbtc{display:flex;align-items:center;gap:14px;font-family:var(--ft);}
+.hbtc-sym{font-size:11px;color:var(--td);letter-spacing:2px;}
+#h-price{font-size:26px;color:#fff;text-shadow:0 0 12px rgba(255,255,255,.25);}
+#h-chg{font-size:17px;}
+.hbtc-label{font-size:9px;color:var(--td);letter-spacing:1px;}
+.header-r{text-align:right;}
+#clock{font-family:var(--ft);font-size:15px;color:var(--c);text-shadow:0 0 8px var(--c);}
+.live-ind{display:flex;align-items:center;gap:6px;font-family:var(--ft);font-size:9px;letter-spacing:2px;color:var(--g);justify-content:flex-end;margin-top:2px;}
+.ldot{width:6px;height:6px;border-radius:50%;background:var(--g);box-shadow:0 0 8px var(--g);animation:blink 1.4s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* TICKER */
+.ticker-bar{background:rgba(0,8,16,.95);border-bottom:1px solid var(--bd);overflow:hidden;display:flex;align-items:center;}
+.ticker-lbl{font-family:var(--fd);font-size:7.5px;letter-spacing:2px;color:var(--c);padding:0 12px;flex-shrink:0;border-right:1px solid var(--bd);}
+.ticker-track{display:flex;animation:scroll 80s linear infinite;white-space:nowrap;}
+@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.ti{font-family:var(--ft);font-size:11px;padding:0 18px;display:inline-flex;align-items:center;gap:8px;}
+.sep{color:rgba(0,212,255,0.15);}
+
+/* MAIN GRID */
+.main-grid{display:grid;grid-template-columns:220px 1fr 258px;overflow:hidden;}
+
+/* PANEL */
+.panel{border:1px solid var(--bd);background:var(--sf);position:relative;overflow:hidden;}
+.panel::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,212,255,.025) 0%,transparent 35%);pointer-events:none;}
+/* Corner brackets */
+.panel::after{content:'';position:absolute;top:0;right:0;width:14px;height:14px;border-top:1.5px solid var(--c);border-right:1.5px solid var(--c);opacity:.35;}
+.ph{font-family:var(--fd);font-size:7.5px;letter-spacing:3px;color:var(--td);padding:7px 12px 6px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;}
+.ph-dot{width:4px;height:4px;border-radius:50%;background:var(--g);box-shadow:0 0 5px var(--g);animation:blink 1.4s ease-in-out infinite;}
+
+/* LEFT */
+.left-panel{border-left:none;border-top:none;border-bottom:none;display:flex;flex-direction:column;overflow-y:auto;}
+.left-panel::-webkit-scrollbar{width:2px;}
+.left-panel::-webkit-scrollbar-thumb{background:var(--c2);}
+.cr{display:grid;grid-template-columns:30px 1fr auto auto;align-items:center;gap:6px;padding:7px 12px;border-bottom:1px solid rgba(0,212,255,.04);cursor:pointer;transition:background .15s;}
+.cr:hover{background:rgba(0,212,255,.04);}
+.ci{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:var(--ft);}
+.cn{font-size:11.5px;font-weight:500;color:#cde;}
+.cs{font-size:8.5px;color:var(--td);}
+.cp{font-family:var(--ft);font-size:11.5px;color:white;text-align:right;}
+.cc{font-family:var(--ft);font-size:10px;text-align:right;min-width:54px;}
+.mr{display:flex;justify-content:space-between;align-items:center;padding:5px 12px;border-bottom:1px solid rgba(0,212,255,.04);}
+.ml{font-size:8.5px;letter-spacing:.5px;color:var(--td);}
+.mv{font-family:var(--ft);font-size:11.5px;color:var(--c);}
+.pos{color:var(--g);text-shadow:0 0 5px rgba(0,255,136,.35);}
+.neg{color:var(--r);text-shadow:0 0 5px rgba(255,51,102,.35);}
+
+/* CENTER */
+.center-panel{display:grid;grid-template-rows:55% 45%;border-top:none;border-bottom:none;}
+.chart-wrap{position:relative;overflow:hidden;border-bottom:1px solid var(--bd);}
+#btc-chart{display:block;width:100%;height:100%;}
+.chart-tag{position:absolute;top:10px;left:12px;font-family:var(--fd);font-size:7.5px;letter-spacing:2px;color:var(--td);}
+.chart-pr{position:absolute;top:10px;right:14px;text-align:right;}
+.chart-prlbl{font-family:var(--fd);font-size:7px;letter-spacing:2px;color:var(--td);}
+#chart-price{font-family:var(--ft);font-size:19px;color:white;text-shadow:0 0 10px rgba(255,255,255,.2);}
+/* Map */
+.map-wrap{position:relative;overflow:hidden;background:#000c16;}
+.map-title{position:absolute;top:8px;left:12px;font-family:var(--fd);font-size:7px;letter-spacing:3px;color:var(--td);z-index:2;}
+#wmap{width:100%;height:100%;}
+@keyframes pin-pulse{0%{r:4;opacity:.8}100%{r:20;opacity:0}}
+.pring{animation:pin-pulse 2.5s ease-out infinite;}
+.pring2{animation:pin-pulse 2.5s ease-out .6s infinite;}
+.pring3{animation:pin-pulse 2.5s ease-out 1.2s infinite;}
+
+/* RIGHT */
+.right-panel{border-right:none;border-top:none;border-bottom:none;overflow-y:auto;display:flex;flex-direction:column;}
+.right-panel::-webkit-scrollbar{width:2px;}
+.right-panel::-webkit-scrollbar-thumb{background:var(--c2);}
+.ib{padding:10px 12px;border-bottom:1px solid var(--bd);}
+.it{font-family:var(--fd);font-size:7px;letter-spacing:3px;color:var(--td);margin-bottom:8px;}
+.fng-wrap{text-align:center;}
+#fng-val{font-family:var(--fd);font-size:34px;font-weight:900;line-height:1;}
+#fng-lbl{font-family:var(--ft);font-size:10px;letter-spacing:2px;margin-top:3px;}
+.donut-wrap{display:flex;align-items:center;gap:12px;}
+#dom-val{font-family:var(--ft);font-size:26px;color:var(--a);text-shadow:0 0 10px rgba(255,170,0,.4);}
+.ir{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(0,212,255,.05);}
+.ir:last-child{border-bottom:none;}
+.in{font-size:9.5px;color:var(--td);}
+.iv{font-family:var(--ft);font-size:11px;color:var(--c);}
+.bar-wrap{height:2px;background:rgba(255,255,255,.05);border-radius:2px;margin-top:3px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:2px;transition:width 1.2s ease;}
+.pitem{display:flex;gap:8px;padding:5px 0;font-size:9.5px;border-bottom:1px solid rgba(0,212,255,.05);}
+.ptime{color:var(--td);font-family:var(--ft);font-size:8.5px;flex-shrink:0;min-width:32px;}
+.ptxt{color:var(--tx);}
+
+/* NEWS */
+.news-bar{background:rgba(0,6,14,.97);border-top:1px solid var(--bd2);display:grid;grid-template-columns:125px 1fr;overflow:hidden;}
+.nlblock{display:flex;flex-direction:column;justify-content:center;padding:0 14px;border-right:1px solid var(--bd);background:rgba(0,15,30,.5);}
+.nlt{font-family:var(--fd);font-size:7.5px;letter-spacing:3px;color:var(--c);margin-bottom:3px;}
+.nls{font-size:8.5px;color:var(--td);letter-spacing:1px;}
+.nscroll{overflow-y:auto;}
+.nscroll::-webkit-scrollbar{width:2px;}
+.nscroll::-webkit-scrollbar-thumb{background:var(--c2);}
+.ni{padding:5px 14px;border-bottom:1px solid rgba(0,212,255,.04);display:grid;grid-template-columns:72px 1fr;gap:8px;cursor:pointer;transition:background .12s;}
+.ni:hover{background:rgba(0,212,255,.03);}
+.ntime{font-family:var(--ft);font-size:8.5px;color:var(--td);margin-top:1px;}
+.nsrc{font-size:8px;color:var(--c);letter-spacing:1px;margin-top:2px;}
+.nh{font-size:10.5px;color:var(--tx);line-height:1.35;}
+
+/* Glitch effect on logo */
+@keyframes glitch{
+  0%,90%,100%{transform:none;text-shadow:0 0 16px var(--c),0 0 32px rgba(0,212,255,.3);}
+  92%{transform:translate(-2px,0);text-shadow:-2px 0 var(--r),2px 0 var(--g);}
+  94%{transform:translate(2px,0);text-shadow:2px 0 var(--r),-2px 0 var(--g);}
+  96%{transform:none;}
+}
+.czar-logo{animation:glitch 8s infinite;}
+
+/* Data flash */
+@keyframes flash{0%{color:white;text-shadow:0 0 12px white}100%{}}
+.flash{animation:flash .4s ease-out;}
+</style>
+</head>
+<body>
+
+<!-- BOOT SCREEN -->
+<div id="boot">
+  <div class="boot-logo">CZAR</div>
+  <div class="boot-line" id="boot-line">INITIALIZING COMMAND INTELLIGENCE TERMINAL...</div>
+  <div class="boot-bar-wrap"><div class="boot-bar" id="boot-bar"></div></div>
+  <div class="boot-line" id="boot-status" style="color:rgba(0,255,136,.5);font-size:10px;">CONNECTING TO MARKET FEEDS</div>
+</div>
+
+<div class="terminal" id="terminal" style="visibility:hidden;">
+
+<!-- HEADER -->
+<header>
+  <div class="logo-wrap">
+    <div class="czar-logo">CZAR</div>
+    <div class="czar-sub">COMMAND INTELLIGENCE TERMINAL · CRYPTO EDITION</div>
+  </div>
+  <div class="hbtc">
+    <span class="hbtc-sym">BTC / USD</span>
+    <span id="h-price">—</span>
+    <span id="h-chg">—</span>
+    <span class="hbtc-label">24H</span>
+    <span style="width:1px;height:24px;background:var(--bd);margin:0 4px;"></span>
+    <span class="hbtc-sym">MARKET CAP</span>
+    <span id="h-mcap" style="font-family:var(--ft);font-size:13px;color:var(--a);">—</span>
+  </div>
+  <div class="header-r">
+    <div id="clock">00:00:00 UTC</div>
+    <div class="live-ind"><span class="ldot"></span>LIVE · ALL FEEDS</div>
+  </div>
+</header>
+
+<!-- TICKER -->
+<div class="ticker-bar">
+  <div class="ticker-lbl">▶ MARKETS</div>
+  <div style="overflow:hidden;flex:1;">
+    <div class="ticker-track" id="ticker">
+      <div class="ti" style="color:var(--td);">Connecting to market feeds...</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main-grid">
+
+  <!-- LEFT -->
+  <div class="left-panel panel">
+    <div class="ph">▸ CZAR WATCHLIST <span class="ph-dot"></span></div>
+    <div id="watchlist"><div style="padding:16px 12px;color:var(--td);font-size:10px;">Loading...</div></div>
+
+    <div class="ph" style="margin-top:2px;">▸ GLOBAL METRICS</div>
+    <div class="mr"><span class="ml">TOTAL MKT CAP</span><span class="mv" id="g-mcap">—</span></div>
+    <div class="mr"><span class="ml">24H VOLUME</span><span class="mv" id="g-vol">—</span></div>
+    <div class="mr"><span class="ml">BTC DOMINANCE</span><span class="mv" id="g-dom" style="color:var(--a);">—</span></div>
+    <div class="mr"><span class="ml">ETH DOMINANCE</span><span class="mv" id="g-ethdom">—</span></div>
+    <div class="mr"><span class="ml">ACTIVE COINS</span><span class="mv" id="g-coins">—</span></div>
+    <div class="mr"><span class="ml">24H MKT CHG</span><span class="mv" id="g-mchg">—</span></div>
+
+    <div class="ph" style="margin-top:2px;">▸ MACRO OVERLAY</div>
+    <div class="mr"><span class="ml">DXY (USD INDEX)</span><span class="mv" style="color:var(--a);" id="dxy">104.2</span></div>
+    <div class="mr"><span class="ml">GOLD / OZ</span><span class="mv" style="color:var(--a);" id="gold">$2,312</span></div>
+    <div class="mr"><span class="ml">S&P 500</span><span class="mv pos" id="spx">5,187</span></div>
+    <div class="mr"><span class="ml">VIX (FEAR)</span><span class="mv neg" id="vix">18.4</span></div>
+    <div class="mr"><span class="ml">US 10Y YIELD</span><span class="mv" style="color:var(--a);" id="yield">4.28%</span></div>
+    <div class="mr"><span class="ml">FED RATE</span><span class="mv" style="color:var(--td);">5.25–5.50%</span></div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center-panel panel">
+    <!-- Chart -->
+    <div class="chart-wrap">
+      <div class="chart-tag">▸ BTC/USD · 7-DAY OHLC CANDLES</div>
+      <div class="chart-pr">
+        <div class="chart-prlbl">LAST PRICE</div>
+        <div id="chart-price">—</div>
+      </div>
+      <canvas id="btc-chart"></canvas>
+    </div>
+    <!-- Map -->
+    <div class="map-wrap">
+      <div class="map-title">▸ GLOBAL INTELLIGENCE MAP — LIVE NEWS FLOW</div>
+      <svg id="wmap" viewBox="0 0 1000 390" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <radialGradient id="mbg" cx="50%" cy="40%" r="70%">
+            <stop offset="0%" stop-color="#011825"/>
+            <stop offset="100%" stop-color="#00080e"/>
+          </radialGradient>
+          <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <filter id="glow2"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <rect width="1000" height="390" fill="url(#mbg)"/>
+        <!-- Lat/lon grid -->
+        <g stroke="rgba(0,212,255,0.055)" stroke-width="0.5">
+          <line x1="0" y1="78" x2="1000" y2="78"/><line x1="0" y1="156" x2="1000" y2="156"/>
+          <line x1="0" y1="195" x2="1000" y2="195" stroke="rgba(0,212,255,0.1)"/>
+          <line x1="0" y1="234" x2="1000" y2="234"/><line x1="0" y1="312" x2="1000" y2="312"/>
+          <line x1="100" y1="0" x2="100" y2="390"/><line x1="200" y1="0" x2="200" y2="390"/>
+          <line x1="300" y1="0" x2="300" y2="390"/><line x1="400" y1="0" x2="400" y2="390"/>
+          <line x1="500" y1="0" x2="500" y2="390"/><line x1="600" y1="0" x2="600" y2="390"/>
+          <line x1="700" y1="0" x2="700" y2="390"/><line x1="800" y1="0" x2="800" y2="390"/>
+          <line x1="900" y1="0" x2="900" y2="390"/>
+        </g>
+        <!-- Continents -->
+        <g fill="rgba(0,212,255,0.07)" stroke="rgba(0,212,255,0.22)" stroke-width="0.8" stroke-linejoin="round">
+          <!-- North America -->
+          <path d="M58,42 L82,28 L118,20 L172,26 L222,38 L252,60 L260,98 L246,132 L224,160 L205,188 L175,208 L150,220 L126,214 L102,196 L80,170 L65,140 L50,112 L47,82 Z"/>
+          <!-- Greenland -->
+          <path d="M228,6 L265,4 L284,14 L280,32 L258,40 L232,32 Z"/>
+          <!-- Caribbean/C.Am -->
+          <path d="M172,215 L198,228 L194,248 L174,252 L160,236 Z"/>
+          <!-- South America -->
+          <path d="M168,250 L202,238 L240,242 L270,264 L286,304 L282,354 L262,398 L236,416 L206,410 L180,388 L160,352 L150,308 L153,268 Z"/>
+          <!-- UK -->
+          <path d="M415,50 L428,44 L438,56 L430,68 L416,64 Z"/>
+          <!-- Europe -->
+          <path d="M420,36 L454,26 L490,30 L520,46 L530,70 L524,100 L507,116 L482,122 L456,116 L432,102 L420,80 Z"/>
+          <!-- Scandinavia -->
+          <path d="M458,14 L478,8 L500,20 L496,46 L476,48 L458,40 Z"/>
+          <!-- Africa -->
+          <path d="M414,130 L454,118 L498,122 L534,140 L556,178 L560,232 L556,292 L540,348 L512,400 L478,414 L446,406 L420,374 L400,318 L394,256 L396,192 Z"/>
+          <!-- Arabian Peninsula -->
+          <path d="M534,144 L574,136 L604,155 L612,186 L596,204 L566,210 L540,198 L528,174 Z"/>
+          <!-- Asia -->
+          <path d="M526,28 L644,14 L776,18 L870,38 L900,75 L894,115 L866,148 L812,164 L756,174 L692,178 L632,180 L574,170 L542,148 L522,115 L520,70 Z"/>
+          <!-- India -->
+          <path d="M616,170 L652,162 L680,174 L693,210 L686,248 L662,270 L636,262 L614,242 L606,210 Z"/>
+          <!-- SE Asia -->
+          <path d="M724,170 L766,162 L798,174 L810,200 L798,220 L772,228 L746,218 L726,200 Z"/>
+          <!-- Japan -->
+          <path d="M842,100 L858,94 L874,105 L870,126 L852,132 L838,118 Z"/>
+          <!-- Australia -->
+          <path d="M690,298 L756,280 L826,290 L856,325 L852,375 L828,408 L778,420 L722,414 L685,385 L673,346 Z"/>
+          <!-- NZ -->
+          <path d="M880,368 L892,358 L904,370 L898,388 L882,392 Z"/>
+        </g>
+        <!-- City markers -->
+        <g id="city-dots" filter="url(#glow)">
+          <circle cx="215" cy="118" r="2.5" fill="var(--c)" opacity=".9"/><text x="219" y="112" font-size="6.5" fill="rgba(0,212,255,.6)" font-family="Share Tech Mono">NYC</text>
+          <circle cx="250" cy="145" r="2" fill="var(--c)" opacity=".6"/>
+          <circle cx="440" cy="72" r="2.5" fill="var(--c)" opacity=".9"/><text x="444" y="66" font-size="6.5" fill="rgba(0,212,255,.6)" font-family="Share Tech Mono">LON</text>
+          <circle cx="474" cy="76" r="2" fill="var(--c)" opacity=".7"/>
+          <circle cx="592" cy="158" r="2.5" fill="var(--c)" opacity=".9"/><text x="596" y="152" font-size="6.5" fill="rgba(0,212,255,.6)" font-family="Share Tech Mono">DXB</text>
+          <circle cx="636" cy="190" r="2" fill="var(--c)" opacity=".7"/>
+          <circle cx="746" cy="218" r="2.5" fill="var(--c)" opacity=".9"/><text x="750" y="212" font-size="6.5" fill="rgba(0,212,255,.6)" font-family="Share Tech Mono">SGP</text>
+          <circle cx="776" cy="155" r="2.5" fill="var(--c)" opacity=".9"/><text x="780" y="149" font-size="6.5" fill="rgba(0,212,255,.6)" font-family="Share Tech Mono">HKG</text>
+          <circle cx="843" cy="108" r="2.5" fill="var(--c)" opacity=".9"/><text x="847" y="102" font-size="6.5" fill="rgba(0,212,255,.6)" font-family="Share Tech Mono">TYO</text>
+          <circle cx="502" cy="75" r="2" fill="var(--c)" opacity=".6"/>
+          <circle cx="178" cy="72" r="2" fill="var(--c)" opacity=".6"/>
+        </g>
+        <!-- Dynamic news pins -->
+        <g id="news-pins"></g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-panel panel">
+
+    <!-- Fear & Greed -->
+    <div class="ib">
+      <div class="it">▸ FEAR &amp; GREED INDEX</div>
+      <div class="fng-wrap">
+        <svg width="210" height="115" viewBox="0 0 210 115" style="display:block;margin:0 auto;">
+          <defs>
+            <linearGradient id="gg" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#ff3366"/>
+              <stop offset="30%" stop-color="#ff6600"/>
+              <stop offset="50%" stop-color="#ffaa00"/>
+              <stop offset="75%" stop-color="#88dd00"/>
+              <stop offset="100%" stop-color="#00ff88"/>
+            </linearGradient>
+          </defs>
+          <!-- Track -->
+          <path d="M 22,105 A 83,83 0 0,1 188,105" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="14" stroke-linecap="round"/>
+          <!-- Fill -->
+          <path id="fng-arc" d="M 22,105 A 83,83 0 0,1 188,105" fill="none" stroke="url(#gg)" stroke-width="14" stroke-linecap="round" stroke-dasharray="261" stroke-dashoffset="130"/>
+          <!-- Needle -->
+          <line id="fng-needle" x1="105" y1="105" x2="105" y2="28" stroke="white" stroke-width="2" stroke-linecap="round" transform="rotate(0,105,105)"/>
+          <circle cx="105" cy="105" r="5" fill="white" filter="url(#glow)"/>
+          <text x="16" y="118" font-size="7.5" fill="var(--r)" font-family="Share Tech Mono">FEAR</text>
+          <text x="170" y="118" font-size="7.5" fill="var(--g)" font-family="Share Tech Mono">GREED</text>
+        </svg>
+        <div id="fng-val" style="color:var(--a);">—</div>
+        <div id="fng-lbl" style="color:var(--a);">LOADING...</div>
+      </div>
+    </div>
+
+    <!-- BTC Dom -->
+    <div class="ib">
+      <div class="it">▸ MARKET DOMINANCE</div>
+      <div class="donut-wrap">
+        <svg width="72" height="72" viewBox="0 0 72 72" style="flex-shrink:0;">
+          <circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="9"/>
+          <circle id="dom-circ" cx="36" cy="36" r="28" fill="none" stroke="var(--a)" stroke-width="9" stroke-linecap="round" stroke-dasharray="175.9" stroke-dashoffset="88" transform="rotate(-90,36,36)"/>
+        </svg>
+        <div>
+          <div id="dom-val">—</div>
+          <div style="font-size:8.5px;color:var(--td);letter-spacing:.5px;margin-top:2px;">BTC OF TOTAL CRYPTO</div>
+          <div style="font-size:9px;color:var(--td);margin-top:4px;">ETH <span id="eth-dom" style="color:var(--c);">—</span></div>
+          <div style="font-size:9px;color:var(--td);">OTHERS <span id="alt-dom" style="color:var(--c);">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hedge Indicators -->
+    <div class="ib">
+      <div class="it">▸ CZAR HEDGE INDICATORS</div>
+      <div class="ir"><span class="in">BTC FUNDING RATE</span><span class="iv pos" id="i-funding">+0.010%</span></div>
+      <div class="ir"><span class="in">OPEN INTEREST</span><span class="iv" id="i-oi">$38.4B</span></div>
+      <div class="ir"><span class="in">LONG/SHORT RATIO</span><span class="iv pos" id="i-ls">1.26 LONGS</span></div>
+      <div class="ir"><span class="in">24H LIQUIDATIONS</span><span class="iv neg" id="i-liq">$142M</span></div>
+      <div class="ir"><span class="in">VOL / MCAP RATIO</span><span class="iv" id="i-vm">—</span></div>
+      <div class="ir"><span class="in">STABLECOIN RATIO</span><span class="iv" style="color:var(--a);" id="i-stable">12.8%</span></div>
+      <div class="ir"><span class="in">MVRV SIGNAL</span><span class="iv" style="color:var(--a);">1.8 · NEUTRAL</span></div>
+    </div>
+
+    <!-- Impact Levels -->
+    <div class="ib">
+      <div class="it">▸ BTC IMPACT LEVELS</div>
+      <div class="ir"><span class="in">STRONG RESISTANCE</span><span class="iv neg" id="l-r2">—</span></div>
+      <div class="ir"><span class="in">RESISTANCE</span><span class="iv" style="color:var(--a);" id="l-r1">—</span></div>
+      <div class="ir" style="background:rgba(0,212,255,.04);border-radius:4px;padding:6px 4px;"><span class="in" style="color:white;">▸ SPOT PRICE</span><span style="font-family:var(--ft);font-size:12px;color:white;" id="l-cur">—</span></div>
+      <div class="ir"><span class="in">SUPPORT</span><span class="iv pos" id="l-s1">—</span></div>
+      <div class="ir"><span class="in">STRONG SUPPORT</span><span class="iv pos" id="l-s2">—</span></div>
+    </div>
+
+    <!-- On-Chain Signal Bars -->
+    <div class="ib">
+      <div class="it">▸ ON-CHAIN PULSE</div>
+      <div style="margin-bottom:6px;">
+        <div class="ir" style="padding:3px 0;"><span class="in">NETWORK ACTIVITY</span><span class="iv" id="oc-net" style="color:var(--g);">HIGH</span></div>
+        <div class="bar-wrap"><div class="bar-fill" id="bar-net" style="width:78%;background:var(--g);"></div></div>
+      </div>
+      <div style="margin-bottom:6px;">
+        <div class="ir" style="padding:3px 0;"><span class="in">WHALE ACCUMULATION</span><span class="iv" id="oc-wh" style="color:var(--a);">MODERATE</span></div>
+        <div class="bar-wrap"><div class="bar-fill" id="bar-wh" style="width:54%;background:var(--a);"></div></div>
+      </div>
+      <div>
+        <div class="ir" style="padding:3px 0;"><span class="in">EXCHANGE OUTFLOW</span><span class="iv" id="oc-ex" style="color:var(--g);">BULLISH</span></div>
+        <div class="bar-wrap"><div class="bar-fill" id="bar-ex" style="width:68%;background:var(--g);"></div></div>
+      </div>
+    </div>
+
+    <!-- CZAR Protocol -->
+    <div class="ib">
+      <div class="it">▸ CZAR PROTOCOL · UPDATE LOG</div>
+      <div id="plog">
+        <div class="pitem"><span class="ptime">INIT</span><span class="ptxt">Terminal online. Intelligence feeds active.</span></div>
+        <div class="pitem"><span class="ptime">AUTO</span><span class="ptxt">Refresh cycle: 30s prices · 5m news</span></div>
+        <div class="pitem"><span class="ptime">SYS</span><span class="ptxt">Self-learning via WhatsApp channel enabled</span></div>
+      </div>
+      <div style="margin-top:8px;font-size:8.5px;color:var(--td);line-height:1.5;">Send updates via WhatsApp to modify watchlist, indicators, or alert levels.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- NEWS -->
+<div class="news-bar">
+  <div class="nlblock">
+    <div class="nlt">INTELLIGENCE</div>
+    <div class="nls">LIVE FEED</div>
+    <div style="margin-top:6px;font-family:var(--ft);font-size:8.5px;color:var(--g);display:flex;align-items:center;gap:5px;" id="ncount">
+      <span class="ldot" style="width:4px;height:4px;"></span>STREAMING
+    </div>
+  </div>
+  <div class="nscroll" id="nscroll">
+    <div style="padding:16px;color:var(--td);font-size:10px;">Loading intelligence feed...</div>
+  </div>
+</div>
+
+</div><!-- end terminal -->
+
+<script>
+// ══════════════════════════════════════════════════════
+// CZAR TERMINAL · Command Intelligence System
+// ══════════════════════════════════════════════════════
+
+const COINS=[
+  {id:'bitcoin',sym:'BTC',name:'Bitcoin',col:'#f7931a'},
+  {id:'ethereum',sym:'ETH',name:'Ethereum',col:'#627eea'},
+  {id:'solana',sym:'SOL',name:'Solana',col:'#9945ff'},
+  {id:'binancecoin',sym:'BNB',name:'BNB',col:'#f3ba2f'},
+  {id:'ripple',sym:'XRP',name:'XRP',col:'#00aae4'},
+  {id:'dogecoin',sym:'DOGE',name:'Dogecoin',col:'#c2a633'},
+  {id:'cardano',sym:'ADA',name:'Cardano',col:'#0033ad'},
+  {id:'avalanche-2',sym:'AVAX',name:'Avalanche',col:'#e84142'},
+];
+const IDS=COINS.map(c=>c.id).join(',');
+const CG='https://api.coingecko.com/api/v3';
+
+let prices={},global_={},ohlc=[];
+
+// ── Boot Sequence ──
+(function boot(){
+  const bar=document.getElementById('boot-bar');
+  const line=document.getElementById('boot-line');
+  const status=document.getElementById('boot-status');
+  const msgs=['CONNECTING TO MARKET FEEDS','LOADING PRICE ENGINES','SYNCING INTELLIGENCE NODES','CALIBRATING INDICATORS','CZAR TERMINAL READY'];
+  let idx=0;
+  bar.style.width='100%';
+  const iv=setInterval(()=>{
+    idx++;
+    if(idx<msgs.length) status.textContent=msgs[idx];
+    if(idx>=msgs.length){
+      clearInterval(iv);
+      setTimeout(()=>{
+        document.getElementById('boot').classList.add('hide');
+        document.getElementById('terminal').style.visibility='visible';
+        setTimeout(()=>document.getElementById('boot').remove(),900);
+      },400);
+    }
+  },500);
+})();
+
+// ── Utilities ──
+function fmt(n){
+  if(!n&&n!==0)return'—';
+  if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T';
+  if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';
+  if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';
+  return'$'+n.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtP(n){
+  if(!n)return'—';
+  if(n>=1000)return'$'+n.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
+  if(n>=1)return'$'+n.toFixed(4);
+  return'$'+n.toFixed(6);
+}
+function fmtC(n){if(n===undefined||n===null)return'—';return(n>=0?'+':'')+n.toFixed(2)+'%';}
+function cls(n){return n>=0?'pos':'neg';}
+function ta(s){
+  const d=new Date(s),now=new Date(),diff=(now-d)/1000;
+  if(diff<60)return Math.floor(diff)+'s';
+  if(diff<3600)return Math.floor(diff/60)+'m';
+  if(diff<86400)return Math.floor(diff/3600)+'h';
+  return Math.floor(diff/86400)+'d';
+}
+function flash(el){el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');}
+
+// ── Clock ──
+function tick(){
+  const n=new Date();
+  document.getElementById('clock').textContent=
+    [n.getUTCHours(),n.getUTCMinutes(),n.getUTCSeconds()].map(x=>String(x).padStart(2,'0')).join(':')+' UTC';
+}
+setInterval(tick,1000);tick();
+
+// ── API Fetches ──
+async function fetchPrices(){
+  const r=await fetch(`${CG}/simple/price?ids=${IDS}&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true`);
+  prices=await r.json();
+}
+async function fetchGlobal(){
+  const r=await fetch(`${CG}/global`);
+  const d=await r.json();
+  global_=d.data;
+}
+async function fetchFNG(){
+  const r=await fetch('https://api.alternative.me/fng/');
+  const d=await r.json();
+  return d.data[0];
+}
+async function fetchOHLC(){
+  const r=await fetch(`${CG}/coins/bitcoin/ohlc?vs_currency=usd&days=7`);
+  ohlc=await r.json();
+}
+async function fetchNews(){
+  try{
+    const feed='https://cointelegraph.com/rss';
+    const r=await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}&count=40`);
+    const d=await r.json();
+    return d.items||[];
+  }catch{return[];}
+}
+
+// ── Render Watchlist ──
+function renderWL(){
+  document.getElementById('watchlist').innerHTML=COINS.map(c=>{
+    const d=prices[c.id];if(!d)return'';
+    const p=fmtP(d.usd),ch=fmtC(d.usd_24h_change),cl=cls(d.usd_24h_change);
+    return`<div class="cr">
+      <div class="ci" style="background:${c.col}18;color:${c.col};">${c.sym.slice(0,2)}</div>
+      <div><div class="cn">${c.sym}</div><div class="cs">${c.name}</div></div>
+      <div class="cp">${p}</div>
+      <div class="cc ${cl}">${ch}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Render Global ──
+function renderGlobal(){
+  const d=global_;if(!d)return;
+  const set=(id,v,cl)=>{const el=document.getElementById(id);if(el){el.textContent=v;if(cl)el.className='mv '+cl;}};
+  set('g-mcap',fmt(d.total_market_cap?.usd));
+  set('g-vol',fmt(d.total_volume?.usd));
+  set('g-dom',(d.market_cap_percentage?.btc||0).toFixed(1)+'%');
+  set('g-ethdom',(d.market_cap_percentage?.eth||0).toFixed(1)+'%');
+  set('g-coins',(d.active_cryptocurrencies||0).toLocaleString());
+  const mc=d.market_cap_change_percentage_24h_usd;
+  set('g-mchg',fmtC(mc),'mv '+cls(mc));
+}
+
+// ── Render Header ──
+function renderHeader(){
+  const b=prices.bitcoin;if(!b)return;
+  const p='$'+b.usd.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const prEl=document.getElementById('h-price');
+  prEl.textContent=p;flash(prEl);
+  const chEl=document.getElementById('h-chg');
+  chEl.textContent=fmtC(b.usd_24h_change);
+  chEl.className=cls(b.usd_24h_change);
+  document.getElementById('h-mcap').textContent=fmt(b.usd_market_cap);
+  document.getElementById('chart-price').textContent=p;
+  document.getElementById('l-cur').textContent=p;
+}
+
+// ── Render Levels ──
+function renderLevels(){
+  const p=prices.bitcoin?.usd;if(!p)return;
+  const f=(v)=>'$'+Math.round(v).toLocaleString();
+  document.getElementById('l-r2').textContent=f(p*1.18);
+  document.getElementById('l-r1').textContent=f(p*1.08);
+  document.getElementById('l-s1').textContent=f(p*0.93);
+  document.getElementById('l-s2').textContent=f(p*0.85);
+}
+
+// ── Render VM Ratio ──
+function renderVM(){
+  const b=prices.bitcoin;if(!b||!b.usd_market_cap)return;
+  document.getElementById('i-vm').textContent=(b.usd_24h_vol/b.usd_market_cap).toFixed(4);
+}
+
+// ── Render Ticker ──
+function renderTicker(){
+  const items=COINS.map(c=>{
+    const d=prices[c.id];if(!d)return'';
+    return`<div class="ti"><span style="color:${c.col};font-weight:700;">${c.sym}</span><span style="color:white;">${fmtP(d.usd)}</span><span class="${cls(d.usd_24h_change)}">${fmtC(d.usd_24h_change)}</span><span class="sep">|</span></div>`;
+  }).join('');
+  document.getElementById('ticker').innerHTML=items+items;
+}
+
+// ── Render FNG ──
+function renderFNG(d){
+  const v=parseInt(d.value);
+  const lbl=d.value_classification;
+  let col=v<=25?'var(--r)':v<=45?'#ff6600':v<=55?'var(--a)':v<=75?'#88dd00':'var(--g)';
+  document.getElementById('fng-val').textContent=v;
+  document.getElementById('fng-val').style.color=col;
+  document.getElementById('fng-lbl').textContent=lbl.toUpperCase();
+  document.getElementById('fng-lbl').style.color=col;
+  // Arc: circumference≈261 (π*83)
+  const offset=261-(v/100)*261;
+  const arc=document.getElementById('fng-arc');
+  if(arc)arc.style.strokeDashoffset=offset;
+  // Needle: -90° to +90°
+  const angle=(v/100)*180-90;
+  const nd=document.getElementById('fng-needle');
+  if(nd)nd.setAttribute('transform',`rotate(${angle},105,105)`);
+}
+
+// ── Render Dominance ──
+function renderDom(){
+  const dom=global_.market_cap_percentage;if(!dom)return;
+  const btc=dom.btc||0,eth=dom.eth||0;
+  document.getElementById('dom-val').textContent=btc.toFixed(1)+'%';
+  document.getElementById('eth-dom').textContent=eth.toFixed(1)+'%';
+  document.getElementById('alt-dom').textContent=(100-btc-eth).toFixed(1)+'%';
+  // Donut: circ=175.9
+  const off=175.9-(btc/100)*175.9;
+  const c=document.getElementById('dom-circ');
+  if(c)c.style.strokeDashoffset=off;
+}
+
+// ── Render News ──
+function renderNews(items){
+  if(!items.length){
+    document.getElementById('nscroll').innerHTML='<div style="padding:16px;color:var(--td);font-size:10px;">Feed temporarily unavailable</div>';
+    return;
+  }
+  document.getElementById('nscroll').innerHTML=items.slice(0,30).map(it=>`
+    <div class="ni" onclick="window.open('${it.link}','_blank')">
+      <div><div class="ntime">${ta(it.pubDate)} AGO</div><div class="nsrc">CRYPTO INTEL</div></div>
+      <div><div class="nh">${it.title}</div></div>
+    </div>`).join('');
+  document.getElementById('ncount').innerHTML=`<span class="ldot" style="width:4px;height:4px;"></span>${items.length} LIVE`;
+}
+
+// ── BTC Chart ──
+function drawChart(){
+  const canvas=document.getElementById('btc-chart');
+  const wrap=canvas.parentElement;
+  canvas.width=wrap.offsetWidth;
+  canvas.height=wrap.offsetHeight;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  ctx.fillStyle='#000c17';ctx.fillRect(0,0,W,H);
+  if(!ohlc||!ohlc.length)return;
+
+  const pad={t:44,r:18,b:28,l:72};
+  const cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
+  const closes=ohlc.map(([,,,, c])=>c);
+  const highs=ohlc.map(([,,h])=>h);
+  const lows=ohlc.map(([,,,l])=>l);
+  const minP=Math.min(...lows)*0.996,maxP=Math.max(...highs)*1.004;
+  const toX=i=>pad.l+(i/(ohlc.length-1))*cW;
+  const toY=p=>pad.t+(1-(p-minP)/(maxP-minP))*cH;
+
+  // Grid
+  ctx.strokeStyle='rgba(0,212,255,0.06)';ctx.lineWidth=1;
+  for(let i=0;i<=5;i++){
+    const y=pad.t+(i/5)*cH;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();
+    const pr=maxP-(i/5)*(maxP-minP);
+    ctx.fillStyle='rgba(0,212,255,0.4)';ctx.font='9px Share Tech Mono';ctx.textAlign='right';
+    ctx.fillText('$'+Math.round(pr).toLocaleString(),pad.l-5,y+3);
+  }
+
+  // Area
+  ctx.beginPath();ctx.moveTo(toX(0),toY(closes[0]));
+  for(let i=1;i<closes.length;i++)ctx.lineTo(toX(i),toY(closes[i]));
+  ctx.lineTo(toX(closes.length-1),H-pad.b);ctx.lineTo(toX(0),H-pad.b);ctx.closePath();
+  const grad=ctx.createLinearGradient(0,pad.t,0,H-pad.b);
+  grad.addColorStop(0,'rgba(0,212,255,0.22)');grad.addColorStop(1,'rgba(0,212,255,0.01)');
+  ctx.fillStyle=grad;ctx.fill();
+
+  // Line
+  ctx.beginPath();ctx.moveTo(toX(0),toY(closes[0]));
+  for(let i=1;i<closes.length;i++)ctx.lineTo(toX(i),toY(closes[i]));
+  ctx.strokeStyle='#00d4ff';ctx.lineWidth=1.8;ctx.shadowBlur=8;ctx.shadowColor='#00d4ff';ctx.stroke();ctx.shadowBlur=0;
+
+  // Candles
+  const cw=Math.max(2,(cW/ohlc.length)*0.55);
+  ohlc.forEach(([,o,h,l,c],i)=>{
+    const x=toX(i),up=c>=o,col=up?'#00ff88':'#ff3366';
+    ctx.strokeStyle=col;ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,toY(h));ctx.lineTo(x,toY(l));ctx.stroke();
+    const bT=toY(Math.max(o,c)),bB=toY(Math.min(o,c));
+    ctx.fillStyle=col+'55';ctx.fillRect(x-cw/2,bT,cw,Math.max(1,bB-bT));
+  });
+
+  // Dashed price line
+  const last=closes[closes.length-1];
+  ctx.setLineDash([3,3]);ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(pad.l,toY(last));ctx.lineTo(W-pad.r,toY(last));ctx.stroke();ctx.setLineDash([]);
+
+  // Date labels
+  const step=Math.floor(ohlc.length/7);
+  ctx.fillStyle='rgba(0,212,255,0.4)';ctx.font='8.5px Share Tech Mono';ctx.textAlign='center';
+  for(let i=0;i<ohlc.length;i+=step){
+    const d=new Date(ohlc[i][0]);
+    ctx.fillText(`${d.getMonth()+1}/${d.getDate()}`,toX(i),H-8);
+  }
+}
+
+// ── Map News Pins ──
+const REGIONS=[
+  {x:215,y:118},{x:440,y:72},{x:592,y:158},{x:746,y:218},
+  {x:776,y:155},{x:843,y:108},{x:636,y:190},{x:474,y:76},
+  {x:170,y:72},{x:250,y:145},{x:502,y:75}
+];
+function spawnPins(){
+  const svg=document.getElementById('news-pins');
+  svg.innerHTML='';
+  const active=[...REGIONS].sort(()=>Math.random()-.5).slice(0,5);
+  active.forEach(({x,y},idx)=>{
+    setTimeout(()=>{
+      const ns='http://www.w3.org/2000/svg';
+      const g=document.createElementNS(ns,'g');
+      [0,1,2].forEach(i=>{
+        const c=document.createElementNS(ns,'circle');
+        c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r','4');
+        c.setAttribute('fill','none');c.setAttribute('stroke','#00ff88');c.setAttribute('stroke-width','1');
+        c.setAttribute('class',['pring','pring2','pring3'][i]);
+        g.appendChild(c);
+      });
+      const dot=document.createElementNS(ns,'circle');
+      dot.setAttribute('cx',x);dot.setAttribute('cy',y);dot.setAttribute('r','3');
+      dot.setAttribute('fill','#00ff88');dot.style.filter='drop-shadow(0 0 5px #00ff88)';
+      g.appendChild(dot);
+      svg.appendChild(g);
+    },idx*700);
+  });
+}
+
+// ── Protocol Log ──
+function logProtocol(time,text){
+  const log=document.getElementById('plog');
+  const d=document.createElement('div');
+  d.className='pitem';
+  d.innerHTML=`<span class="ptime">${time}</span><span class="ptxt">${text}</span>`;
+  log.insertBefore(d,log.firstChild);
+}
+
+// ── Main Refresh Loop ──
+async function refreshPrices(){
+  try{
+    await Promise.all([fetchPrices(),fetchGlobal()]);
+    renderWL();renderGlobal();renderHeader();renderTicker();renderLevels();renderVM();renderDom();
+  }catch(e){console.error('Price err',e);}
+}
+async function refreshChart(){try{await fetchOHLC();drawChart();}catch(e){console.error('Chart err',e);}}
+async function refreshFNG(){try{renderFNG(await fetchFNG());}catch(e){console.error('FNG err',e);}}
+async function refreshNews(){try{renderNews(await fetchNews());}catch(e){console.error('News err',e);}}
+
+async function boot2(){
+  await refreshPrices();
+  await refreshFNG();
+  refreshChart();
+  refreshNews();
+  spawnPins();
+  setTimeout(()=>logProtocol('DATA','All market feeds loaded · System nominal'),1500);
+}
+boot2();
+
+setInterval(refreshPrices,30000);
+setInterval(refreshFNG,300000);
+setInterval(refreshChart,600000);
+setInterval(refreshNews,300000);
+setInterval(spawnPins,9000);
+window.addEventListener('resize',()=>{if(ohlc.length)drawChart();});
+</script>
+</body>
+</html>

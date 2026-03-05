@@ -299,6 +299,24 @@ header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px
   .m-nh{font-size:13px;color:var(--tx);line-height:1.4;}
 }
 
+/* Pull-to-refresh indicator */
+#ptr-indicator{
+  position:absolute;top:-40px;left:50%;transform:translateX(-50%);
+  font-family:var(--fd);font-size:8px;letter-spacing:2px;color:var(--c);
+  display:flex;align-items:center;gap:6px;transition:top .2s;
+  opacity:0;pointer-events:none;
+}
+#ptr-indicator.show{top:8px;opacity:1;}
+
+/* Skeleton shimmer */
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.skel{
+  background:linear-gradient(90deg,rgba(0,212,255,.04) 25%,rgba(0,212,255,.1) 50%,rgba(0,212,255,.04) 75%);
+  background-size:200% 100%;
+  animation:shimmer 1.4s ease-in-out infinite;
+  border-radius:4px;
+}
+
 /* Hide mobile shell on desktop */
 @media (min-width:769px){
   #m-shell{display:none!important;}
@@ -608,7 +626,7 @@ header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px
     <!-- MARKETS Panel -->
     <div class="m-panel" id="mp-markets">
       <div class="mp-head">▸ CZAR WATCHLIST <span class="mp-dot"></span></div>
-      <div id="m-watchlist"></div>
+      <div id="m-watchlist">${[...Array(8)].map(()=>`<div class="m-cr"><div class="m-ci skel" style="width:34px;height:34px;"></div><div style="flex:1;"><div class="skel" style="height:13px;width:40%;margin-bottom:4px;"></div><div class="skel" style="height:10px;width:60%;"></div></div><div class="skel" style="height:13px;width:70px;"></div></div>`).join('')}</div>
 
       <div class="m-section">
         <div class="m-section-head">▸ GLOBAL METRICS</div>
@@ -761,7 +779,7 @@ header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px
     <div class="m-panel" id="mp-news">
       <div class="mp-head">▸ INTELLIGENCE FEED <span class="mp-dot"></span></div>
       <div id="m-nscroll">
-        <div style="padding:20px 16px;color:var(--td);font-size:11px;">Loading intelligence feed...</div>
+        ${[...Array(8)].map(()=>`<div class="m-ni"><div class="m-ni-meta"><div class="skel" style="height:9px;width:40px;border-radius:3px;"></div><div class="skel" style="height:9px;width:80px;border-radius:3px;margin-left:8px;"></div></div><div class="skel" style="height:13px;width:90%;margin-top:5px;border-radius:3px;"></div><div class="skel" style="height:13px;width:70%;margin-top:4px;border-radius:3px;"></div></div>`).join('')}
       </div>
     </div>
 
@@ -801,6 +819,21 @@ header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px
 
 const isMobile=()=>window.innerWidth<=768;
 
+// ── localStorage Cache ──
+const CACHE_TTL={prices:30000,fng:300000,ohlc:600000,news:300000};
+function cacheSet(key,data){try{localStorage.setItem('czar_'+key,JSON.stringify({ts:Date.now(),data}));}catch{}}
+function cacheGet(key,ttl){try{const r=JSON.parse(localStorage.getItem('czar_'+key)||'null');if(r&&Date.now()-r.ts<ttl)return r.data;}catch{}return null;}
+
+// ── Haptic ──
+function haptic(ms=30){try{navigator.vibrate&&navigator.vibrate(ms);}catch{}}
+
+// ── Page Visibility — pause/resume refreshes ──
+let refreshPaused=false;
+document.addEventListener('visibilitychange',()=>{
+  refreshPaused=document.hidden;
+  if(!document.hidden){refreshPrices();} // immediate refresh on return
+});
+
 const COINS=[
   {id:'bitcoin',sym:'BTC',name:'Bitcoin',col:'#f7931a'},
   {id:'ethereum',sym:'ETH',name:'Ethereum',col:'#627eea'},
@@ -828,15 +861,56 @@ function initShell(){
 }
 
 // ── Tab switching ──
+const TAB_ORDER=['mp-chart','mp-markets','mp-intel','mp-map','mp-news'];
 function switchTab(btn,panelId){
   document.querySelectorAll('.m-tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.m-panel').forEach(p=>p.classList.remove('active'));
-  btn.classList.add('active');
+  if(btn)btn.classList.add('active');
+  else document.querySelector(`[data-panel="${panelId}"]`)?.classList.add('active');
   document.getElementById(panelId).classList.add('active');
-  // Redraw chart if switching to chart tab
+  try{localStorage.setItem('czar_tab',panelId);}catch{}
+  haptic(20);
   if(panelId==='mp-chart'&&ohlc.length) requestAnimationFrame(drawChartMobile);
   if(panelId==='mp-map') setTimeout(spawnPinsMobile,100);
 }
+
+// ── Swipe gesture between tabs ──
+(function initSwipe(){
+  let sx=0,sy=0,dragging=false;
+  const panels=document.getElementById('m-panels');
+  if(!panels)return;
+  panels.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;dragging=true;},{passive:true});
+  panels.addEventListener('touchend',e=>{
+    if(!dragging)return;dragging=false;
+    const dx=e.changedTouches[0].clientX-sx;
+    const dy=e.changedTouches[0].clientY-sy;
+    if(Math.abs(dx)<40||Math.abs(dx)<Math.abs(dy)*1.5)return; // not a horizontal swipe
+    const cur=document.querySelector('.m-panel.active');
+    if(!cur)return;
+    const idx=TAB_ORDER.indexOf(cur.id);
+    const next=dx<0?Math.min(idx+1,TAB_ORDER.length-1):Math.max(idx-1,0);
+    if(next!==idx){
+      const btn=document.querySelector(`[data-panel="${TAB_ORDER[next]}"]`);
+      switchTab(btn,TAB_ORDER[next]);
+    }
+  },{passive:true});
+})();
+
+// ── Pull-to-refresh ──
+(function initPullRefresh(){
+  let startY=0,pulling=false;
+  const panels=document.getElementById('m-panels');
+  if(!panels)return;
+  panels.addEventListener('touchstart',e=>{
+    const panel=document.querySelector('.m-panel.active');
+    if(panel&&panel.scrollTop===0){startY=e.touches[0].clientY;pulling=true;}
+  },{passive:true});
+  panels.addEventListener('touchend',e=>{
+    if(!pulling)return;pulling=false;
+    const dy=e.changedTouches[0].clientY-startY;
+    if(dy>70){haptic([15,20,15]);refreshPrices();refreshNews();logProtocol('SYNC','Manual refresh triggered');}
+  },{passive:true});
+})();
 
 // ── Boot Sequence ──
 (function boot(){
@@ -882,7 +956,7 @@ function ta(s){
   if(diff<86400)return Math.floor(diff/3600)+'h';
   return Math.floor(diff/86400)+'d';
 }
-function flash(el){if(!el)return;el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');}
+function flash(el){if(!el)return;el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');haptic(15);}
 
 // ── Clock ──
 function tick(){
@@ -893,31 +967,60 @@ function tick(){
 }
 setInterval(tick,1000);tick();
 
-// ── API Fetches ──
+// ── API Fetches (with cache) ──
 async function fetchPrices(){
+  const cached=cacheGet('prices',CACHE_TTL.prices);
+  if(cached){prices=cached;return;}
   const r=await fetch(`${CG}/simple/price?ids=${IDS}&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true`);
   prices=await r.json();
+  cacheSet('prices',prices);
 }
 async function fetchGlobal(){
+  const cached=cacheGet('global',CACHE_TTL.prices);
+  if(cached){global_=cached;return;}
   const r=await fetch(`${CG}/global`);
   const d=await r.json();
   global_=d.data;
+  cacheSet('global',global_);
 }
 async function fetchFNG(){
+  const cached=cacheGet('fng',CACHE_TTL.fng);
+  if(cached)return cached;
   const r=await fetch('https://api.alternative.me/fng/');
   const d=await r.json();
+  cacheSet('fng',d.data[0]);
   return d.data[0];
 }
 async function fetchOHLC(){
+  const cached=cacheGet('ohlc',CACHE_TTL.ohlc);
+  if(cached){ohlc=cached;return;}
   const r=await fetch(`${CG}/coins/bitcoin/ohlc?vs_currency=usd&days=7`);
   ohlc=await r.json();
+  cacheSet('ohlc',ohlc);
 }
 async function fetchNews(){
+  // Aggregate 3 sources — rss2json free tier returns 10 items each, no count param
+  const FEEDS=[
+    'https://cointelegraph.com/rss',
+    'https://decrypt.co/feed',
+    'https://www.coindesk.com/arc/outboundfeeds/rss/',
+  ];
   try{
-    const feed='https://cointelegraph.com/rss';
-    const r=await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}&count=40`);
-    const d=await r.json();
-    return d.items||[];
+    const results=await Promise.allSettled(
+      FEEDS.map(f=>fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(f)}`).then(r=>r.json()))
+    );
+    const items=[];
+    const seen=new Set();
+    for(const r of results){
+      if(r.status==='fulfilled'&&r.value.status==='ok'&&r.value.items){
+        for(const it of r.value.items){
+          if(!seen.has(it.title)){seen.add(it.title);items.push(it);}
+        }
+      }
+    }
+    // Sort by date descending
+    items.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
+    return items;
   }catch{return[];}
 }
 
@@ -1252,10 +1355,18 @@ async function boot2(){
 }
 boot2();
 
-setInterval(refreshPrices,30000);
-setInterval(refreshFNG,300000);
-setInterval(refreshChart,600000);
-setInterval(refreshNews,300000);
+// Restore last tab
+try{
+  const saved=localStorage.getItem('czar_tab');
+  if(saved&&document.getElementById(saved)){
+    switchTab(null,saved);
+  }
+}catch{}
+
+setInterval(()=>{if(!refreshPaused)refreshPrices();},30000);
+setInterval(()=>{if(!refreshPaused)refreshFNG();},300000);
+setInterval(()=>{if(!refreshPaused)refreshChart();},600000);
+setInterval(()=>{if(!refreshPaused)refreshNews();},300000);
 setInterval(spawnPins,9000);
 setInterval(spawnPinsMobile,9000);
 
